@@ -1,0 +1,9 @@
+build/
+# stock PicoFox firmware downloaded by tools/flash.py --stock (AI6YM's, not redistributed)
+stock/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+docs/plans/
+.DS_Store

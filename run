@@ -1,0 +1,30 @@
+#!/bin/sh
+# Launch a tool with an interpreter that actually has the dependencies.
+#   ./run tools/flash.py [file.uf2]        flash the firmware
+#   ./run tools/foxctl.py --status         drive the PicoFox
+#
+# Never trusts the default `python`: it may be an old Python that has
+# pyserial installed but can't run these tools. So the version is checked,
+# not just the import.
+here=$(cd "$(dirname "$0")" && pwd)
+if [ $# -eq 0 ]; then
+    sed -n '2,4p' "$0" | sed 's/^# //'
+    exit 2
+fi
+target=$1; shift
+case "$target" in /*) : ;; *) target="$here/$target" ;; esac
+
+CANDS="$here/.venv/bin/python"
+[ -n "$CONDA_PREFIX" ] && CANDS="$CANDS $CONDA_PREFIX/bin/python"
+CANDS="$CANDS $(command -v python3 2>/dev/null) $(command -v python 2>/dev/null)"
+for P in $CANDS; do
+    [ -x "$P" ] || continue
+    "$P" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1 || continue
+    "$P" -c 'import serial' >/dev/null 2>&1 || continue
+    exec "$P" "$target" "$@"
+done
+cat >&2 <<MSG
+No Python >= 3.10 with pyserial found. Create one with:
+    $here/bootstrap
+MSG
+exit 1

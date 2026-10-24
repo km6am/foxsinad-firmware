@@ -1,0 +1,34 @@
+#!/bin/sh
+# Create a Python environment the tools can run in.
+#   ./bootstrap          create .venv with the dependencies
+#   ./bootstrap --dev    also install the test dependencies (pytest)
+#   ./bootstrap --check  report what ./run would use, create nothing
+here=$(cd "$(dirname "$0")" && pwd)
+
+if [ "$1" = "--check" ]; then
+    for P in "$here/.venv/bin/python" "$CONDA_PREFIX/bin/python" \
+             "$(command -v python3)" "$(command -v python)"; do
+        [ -x "$P" ] || continue
+        v=$("$P" -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null) || continue
+        s=$("$P" -c 'import serial;print("pyserial",serial.__version__)' 2>/dev/null || echo "no pyserial")
+        printf '  %-50s py%-5s %s\n' "$P" "$v" "$s"
+    done
+    exit 0
+fi
+
+BASE=""
+for P in "$(command -v python3.13)" "$(command -v python3.12)" "$(command -v python3.11)" \
+         "$(command -v python3.10)" "$(command -v python3)"; do
+    [ -x "$P" ] || continue
+    "$P" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' >/dev/null 2>&1 \
+        && { BASE=$P; break; }
+done
+[ -n "$BASE" ] || { echo "No Python >= 3.10 found. Install one from python.org or your package manager." >&2; exit 1; }
+
+echo "Creating $here/.venv from $BASE ..."
+"$BASE" -m venv "$here/.venv" || exit 1
+"$here/.venv/bin/python" -m pip install -q --upgrade pip
+REQ="$here/requirements.txt"
+[ "$1" = "--dev" ] && REQ="$here/requirements-dev.txt"
+"$here/.venv/bin/python" -m pip install -q -r "$REQ" || exit 1
+echo "OK: $here/.venv/bin/python   (now use ./run)"

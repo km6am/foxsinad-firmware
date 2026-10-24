@@ -1,0 +1,2 @@
+# Runtime dependency of tools/. The firmware itself builds with arduino-cli (build.sh).
+pyserial>=3.5
